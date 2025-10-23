@@ -1,0 +1,36 @@
+{
+  "canisters": {
+    "internet_identity": {
+      "type": "custom",
+      "wasm": "https://github.com/dfinity/internet-identity/releases/download/release-2025-10-22/internet_identity_dev.wasm.gz",
+      "candid": "https://github.com/dfinity/internet-identity/releases/download/release-2025-10-22/internet_identity.did",
+      "remote": {
+        "id": {
+          "ic": "rdmx6-jaaaa-aaaaa-aaadq-cai"
+        }
+      },
+      "frontend": {}
+    },
+    "parkpulse_backend": {
+      "main": "src/parkpulse_backend/main.mo",
+      "type": "motoko"
+    },
+    "parkpulse_frontend": {
+      "dependencies": [
+        "parkpulse_backend"
+      ],
+      "source": [
+        "src/parkpulse_frontend/.next"
+      ],
+      "type": "assets"
+    }
+  },
+  "defaults": {
+    "build": {
+      "args": "",
+      "packtool": ""
+    }
+  },
+  "output_env_file": ".env",
+  "version": 1
+}

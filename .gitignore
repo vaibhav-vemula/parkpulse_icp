@@ -1,0 +1,96 @@
+# Environment Variables (IMPORTANT: Never commit API keys!)
+.env
+.env.local
+.env.*.local
+*.env
+api/.env
+src/parkpulse_frontend/.env
+src/parkpulse_frontend/.env.local
+
+# ICP / DFX
+.dfx/
+canister_ids.json
+**/declarations/
+.ic-assets.json
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+build/
+dist/
+.turbo/
+.svelte-kit/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+
+# Python (FastAPI Backend)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+dist/
+build/
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+**/*~
+.history/
+
+# Mac OSX
+.DS_Store
+**/.DS_Store
+.AppleDouble
+.LSOverride
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+logs/
+*.log
+
+# Testing
+coverage/
+.nyc_output/
+.jest/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+.parcel-cache/
+
+# TypeScript
+*.tsbuildinfo
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Misc
+.vercel
+.turbo
