@@ -3,6 +3,8 @@
 .env.local
 .env.*.local
 *.env
+.env.production
+.env.example
 api/.env
 src/parkpulse_frontend/.env
 src/parkpulse_frontend/.env.local
