@@ -65,16 +65,22 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-gemini_api_key = os.getenv("GEMINI_API_KEY")
-if not gemini_api_key:
-    raise ValueError("GEMINI_API_KEY environment variable is required")
+_gemini_client = None
 
-try:
-    client = genai.Client(api_key=gemini_api_key)
-    logger.info("Gemini API client initialized successfully")
-except Exception as e:
-    logger.error(f"Failed to initialize Gemini API client: {e}")
-    raise e
+def get_gemini_client():
+    """Lazy initialization of Gemini client (for serverless compatibility)"""
+    global _gemini_client
+    if _gemini_client is None:
+        gemini_api_key = os.getenv("GEMINI_API_KEY")
+        if not gemini_api_key:
+            raise ValueError("GEMINI_API_KEY environment variable is required")
+        try:
+            _gemini_client = genai.Client(api_key=gemini_api_key)
+            logger.info("Gemini API client initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize Gemini API client: {e}")
+            raise e
+    return _gemini_client
 
 
 @app.get("/")
@@ -99,7 +105,7 @@ async def root():
 
 @app.post("/api/agent")
 async def agent_endpoint(request: AgentRequest):
-    return await handle_agent_request(request, client)
+    return await handle_agent_request(request, get_gemini_client())
 
 @app.post("/api/analyze")
 async def analyze_endpoint(request: AnalyzeRequest):

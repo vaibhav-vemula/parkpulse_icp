@@ -325,7 +325,8 @@ async def handle_create_proposal_intent(selected_park_id, session_id, message):
             end_date = date_match.group(1).title()
 
     park_name = analysis_data.get("parkName", "Selected Park")
-    from main import client
+    from main import get_gemini_client
+    client = get_gemini_client()
     summary_prompt = f"""Generate a compelling 2-3 paragraph community proposal summary for protecting this park.
 
 Park: {park_name}
