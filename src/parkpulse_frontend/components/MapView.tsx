@@ -142,7 +142,7 @@ export default function MapView({ parks, onParkClick, selectedParkId }: MapViewP
       // Add source
       map.current.addSource('parks', {
         type: 'geojson',
-        data: geojsonData as any,
+        data: geojsonData as GeoJSON.FeatureCollection,
       });
     } catch (error) {
       console.error('Error adding GeoJSON source:', error);
