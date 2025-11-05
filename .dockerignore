@@ -1,0 +1,49 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info
+dist
+build
+.venv
+venv
+env
+
+# IDEs
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node
+node_modules
+npm-debug.log
+
+# ICP
+.dfx
+canister_ids.json
+
+# Environment
+.env
+.env.local
+*.env
+
+# Next.js
+src/parkpulse_frontend/.next
+src/parkpulse_frontend/out
+
+# Documentation
+README.md
+DEPLOYMENT.md
