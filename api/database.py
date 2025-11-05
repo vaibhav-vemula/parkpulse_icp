@@ -18,22 +18,33 @@ logger = logging.getLogger(__name__)
 
 db_pool = None
 
-async def init_db():
+async def get_db_pool():
+    """Get or create database connection pool (lazy initialization for serverless)"""
     global db_pool
-    db_pool = await asyncpg.create_pool(
-        host=os.getenv("PGHOST"),
-        port=os.getenv("PGPORT"),
-        database=os.getenv("PGDATABASE"),
-        user=os.getenv("PGUSER"),
-        password=os.getenv("PGPASSWORD"),
-        min_size=1,
-        max_size=10
-    )
+    if db_pool is None:
+        logger.info("Initializing database connection pool...")
+        db_pool = await asyncpg.create_pool(
+            host=os.getenv("PGHOST"),
+            port=os.getenv("PGPORT"),
+            database=os.getenv("PGDATABASE"),
+            user=os.getenv("PGUSER"),
+            password=os.getenv("PGPASSWORD"),
+            min_size=1,
+            max_size=10
+        )
+        logger.info("Database connection pool initialized")
+    return db_pool
+
+async def init_db():
+    """Initialize database connection pool"""
+    await get_db_pool()
 
 async def close_db():
+    global db_pool
     if db_pool:
         await db_pool.close()
         logger.info("Database connection pool closed")
+        db_pool = None
 
 def build_feature_collection(rows):
     return {
@@ -58,7 +69,8 @@ def build_feature_collection(rows):
     }
 
 async def query_parks_by_location(query, simplify_tolerance: float = 0.0002):
-    async with db_pool.acquire() as conn:
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
         where_clauses = []
         params = []
 
@@ -97,7 +109,8 @@ async def query_parks_by_location(query, simplify_tolerance: float = 0.0002):
         return build_feature_collection([dict(row) for row in rows])
 
 async def query_park_area_by_id(park_id: str):
-    async with db_pool.acquire() as conn:
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
         sql = """
             SELECT park_name,
                    COALESCE(park_size_, NULLIF(shape_area,0) * 0.000247105,
@@ -115,7 +128,8 @@ async def query_park_area_by_id(park_id: str):
         }
 
 async def get_park_statistics_by_id(park_id: str):
-    async with db_pool.acquire() as conn:
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
         sql = """
             SELECT SUM_TOTPOP, SUM_KIDSVC, SUM_YOUNGP, SUM_SENIOR,
                    SUM_HHILOW, SUM_HHIMED, SUM_HHIHIG, SUM_TOTHHS,
@@ -128,7 +142,8 @@ async def get_park_statistics_by_id(park_id: str):
         return dict(row) if row else None
 
 async def query_park_stat_by_id(park_id: str, metric: str):
-    async with db_pool.acquire() as conn:
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
         sql = f"SELECT {metric} FROM parks_stats WHERE park_id = $1 LIMIT 1"
         row = await conn.fetchrow(sql, park_id)
         if not row:
@@ -149,7 +164,8 @@ async def query_park_stat_by_id(park_id: str, metric: str):
 
 async def get_park_ndvi(park_id: str):
     from utils import geometry_from_geojson, compute_ndvi
-    async with db_pool.acquire() as conn:
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
         sql = "SELECT ST_AsGeoJSON(ST_Transform(geom, 4326))::json AS geometry FROM parks WHERE park_id = $1"
         row = await conn.fetchrow(sql, park_id)
         if not row:
@@ -168,7 +184,8 @@ async def get_park_ndvi(park_id: str):
 
 async def get_park_information(park_id: str, client):
     from utils import geometry_from_geojson, assess_air_quality_and_damage
-    async with db_pool.acquire() as conn:
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
         sql = """
             SELECT p.park_name, p.park_addre, p.park_owner, p.park_zip,
                    COALESCE(p.park_size_, NULLIF(p.shape_area,0) * 0.000247105,
@@ -273,7 +290,8 @@ With a vegetation health index (NDVI) of {park_data['ndvi']}, it contributes to 
 
 async def get_park_air_quality(park_id: str):
     from utils import geometry_from_geojson, assess_air_quality_and_damage
-    async with db_pool.acquire() as conn:
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
         sql = """
             SELECT park_name, ST_AsGeoJSON(ST_Transform(geom, 4326))::json AS geometry
             FROM parks
@@ -308,7 +326,8 @@ async def analyze_park_removal_impact(park_id: str, land_use_type: str = "remove
     from utils import (geometry_from_geojson, compute_ndvi, compute_walkability,
                       compute_pm25, compute_population, simulate_replacement_with_buildings)
 
-    async with db_pool.acquire() as conn:
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
         sql = """
             SELECT park_name, ST_AsGeoJSON(ST_Transform(geom, 4326))::json AS geometry
             FROM parks_stats
@@ -400,7 +419,8 @@ async def analyze_park_removal_impact(park_id: str, land_use_type: str = "remove
 async def analyze_park_removal_pollution_impact(park_id: str, land_use_type: str = "removed"):
     from utils import geometry_from_geojson, compute_pm25, get_health_risk_category, get_environmental_damage_level
 
-    async with db_pool.acquire() as conn:
+    pool = await get_db_pool()
+    async with pool.acquire() as conn:
         sql = """
             SELECT park_name, ST_AsGeoJSON(ST_Transform(geom, 4326))::json AS geometry
             FROM parks
