@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Poppins, Inter } from "next/font/google";
 import "./globals.css";
-import FlowProvider from "@/components/FlowProvider";
 
 const poppins = Poppins({
   variable: "--font-poppins",
@@ -29,7 +28,7 @@ export default function RootLayout({
       <body
         className={`${poppins.variable} ${inter.variable} antialiased font-sans`}
       >
-        <FlowProvider>{children}</FlowProvider>
+        {children}
       </body>
     </html>
   );
