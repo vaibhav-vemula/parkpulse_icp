@@ -38,17 +38,34 @@ load_dotenv()
 # Suppress pydantic warnings from google-genai package
 warnings.filterwarnings("ignore", category=UserWarning, module="pydantic")
 
+# Setup logging first
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 # Session storage for tracking removal analysis results
 session_storage: Dict[str, Dict[str, Any]] = {}
 
 # Initialize Earth Engine with service account or default credentials
 gee_project_id = os.getenv('GEE_PROJECT_ID')
 gee_service_account = os.getenv('GEE_SERVICE_ACCOUNT')
+gee_private_key = os.getenv('GEE_PRIVATE_KEY')
 
-if gee_service_account:
+if gee_service_account and gee_private_key:
     # Production: Use service account credentials
     try:
-        credentials = ee.ServiceAccountCredentials(gee_service_account, key_data=os.getenv('GEE_PRIVATE_KEY'))
+        # Construct service account JSON from environment variables
+        service_account_info = {
+            "type": "service_account",
+            "project_id": gee_project_id,
+            "private_key": gee_private_key.replace('\\n', '\n'),  # Handle escaped newlines
+            "client_email": gee_service_account,
+            "token_uri": "https://oauth2.googleapis.com/token",
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+            "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs"
+        }
+
+        # Convert dict to JSON string
+        credentials = ee.ServiceAccountCredentials(gee_service_account, key_data=json.dumps(service_account_info))
         ee.Initialize(credentials, project=gee_project_id)
         logger.info("Earth Engine initialized with service account")
     except Exception as e:
@@ -58,9 +75,6 @@ else:
     # Local development: Use default credentials
     ee.Initialize(project=gee_project_id)
     logger.info("Earth Engine initialized with default credentials")
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
