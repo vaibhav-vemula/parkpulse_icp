@@ -68,12 +68,51 @@ Examples:
 - "hello" -> greeting intent"""
 
         try:
+            # Manual schema definition for Gemini compatibility (avoids Pydantic $defs issues)
+            schema = {
+                "type": "object",
+                "properties": {
+                    "intent": {
+                        "type": "string",
+                        "enum": [
+                            "show_parks", "ask_area", "greeting", "unknown",
+                            "park_removal_impact", "park_ndvi_query", "park_stat_query",
+                            "park_info_query", "air_quality_query", "create_proposal"
+                        ]
+                    },
+                    "locationType": {
+                        "type": "string",
+                        "enum": ["zip", "city", "state"],
+                        "nullable": True
+                    },
+                    "locationValue": {
+                        "type": "string",
+                        "nullable": True
+                    },
+                    "unit": {
+                        "type": "string",
+                        "enum": ["acres", "m2", "km2", "hectares"],
+                        "nullable": True
+                    },
+                    "landUseType": {
+                        "type": "string",
+                        "enum": ["removed", "replaced_by_building"],
+                        "nullable": True
+                    },
+                    "metric": {
+                        "type": "string",
+                        "nullable": True
+                    }
+                },
+                "required": ["intent"]
+            }
+
             response = client.models.generate_content(
                 model="gemini-2.0-flash-exp",
                 contents=prompt,
                 config={
                     "response_mime_type": "application/json",
-                    "response_schema": IntentClassification,
+                    "response_schema": schema,
                 }
             )
             logger.info(f"Gemini structured response: {response.text}")

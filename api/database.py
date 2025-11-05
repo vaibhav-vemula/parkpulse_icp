@@ -1,7 +1,7 @@
 import os
 import json
 from typing import Optional, Dict, Any, List
-import asyncpg
+from supabase import create_client, Client
 from fastapi import HTTPException
 import logging
 from dotenv import load_dotenv
@@ -11,30 +11,40 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-async def get_db_connection():
-    """Create a new database connection (serverless-friendly - no pooling)"""
-    try:
-        conn = await asyncpg.connect(
-            host=os.getenv("PGHOST"),
-            port=int(os.getenv("PGPORT", 5432)),
-            database=os.getenv("PGDATABASE"),
-            user=os.getenv("PGUSER"),
-            password=os.getenv("PGPASSWORD"),
-            timeout=30,
-            command_timeout=60,
-            ssl='require'
-        )
-        return conn
-    except Exception as e:
-        logger.error(f"Failed to connect to database: {e}")
-        raise
+_supabase_client = None
+
+def get_supabase() -> Client:
+    """Get or create Supabase client (lazy initialization for serverless)"""
+    global _supabase_client
+    if _supabase_client is None:
+        logger.info("Initializing Supabase client...")
+
+        # Get Supabase URL and key from environment
+        supabase_url = os.getenv("SUPABASE_URL")
+        supabase_key = os.getenv("SUPABASE_KEY")
+
+        # If not set, construct from PGHOST
+        if not supabase_url:
+            pghost = os.getenv("PGHOST", "")
+            if "supabase.co" in pghost:
+                project_ref = pghost.replace("db.", "").replace(".supabase.co", "")
+                supabase_url = f"https://{project_ref}.supabase.co"
+
+        if not supabase_url or not supabase_key:
+            raise ValueError("SUPABASE_URL and SUPABASE_KEY environment variables are required")
+
+        _supabase_client = create_client(supabase_url, supabase_key)
+        logger.info("Supabase client initialized")
+
+    return _supabase_client
 
 async def init_db():
-    """Initialize database (no-op for serverless)"""
-    logger.info("Database initialized (serverless mode - no pooling)")
+    """Initialize Supabase client"""
+    get_supabase()
+    logger.info("Database initialized (Supabase client)")
 
 async def close_db():
-    """Close database (no-op for serverless)"""
+    """Close Supabase client (no-op)"""
     pass
 
 def build_feature_collection(rows):
@@ -60,119 +70,148 @@ def build_feature_collection(rows):
     }
 
 async def query_parks_by_location(query, simplify_tolerance: float = 0.0002):
-    conn = await get_db_connection()
+    supabase = get_supabase()
+
     try:
-        where_clauses = []
-        params = []
+        # Build the query using Supabase filters
+        db_query = supabase.table('parks').select(
+            'gid, park_id, park_name, park_addre, park_owner, park_zip, '
+            'park_size_, shape_area, geom'
+        )
 
+        # Apply filters
         if query.zip:
-            params.append(query.zip)
-            where_clauses.append(f"park_zip = ${len(params)}")
-        if query.city:
-            params.append(query.city)
-            where_clauses.append(f"LOWER(park_place) = LOWER(${len(params)})")
-        if query.state:
-            params.append(query.state)
-            where_clauses.append(f"LOWER(park_state) = LOWER(${len(params)})")
+            db_query = db_query.eq('park_zip', query.zip)
+        elif query.city:
+            db_query = db_query.ilike('park_place', query.city)
+        elif query.state:
+            db_query = db_query.ilike('park_state', query.state)
+        else:
+            # No filter provided, return empty
+            return {"type": "FeatureCollection", "features": []}
 
-        if not where_clauses:
-            where_clauses.append("1=0")
+        # Execute query
+        response = db_query.limit(5000).execute()
 
-        params.append(simplify_tolerance)
+        # Process results - transform geometry data
+        features = []
+        for row in response.data:
+            # Calculate area
+            area_acres = row.get('park_size_') or (row.get('shape_area', 0) * 0.000247105 if row.get('shape_area') else 0)
 
-        sql = f"""
-            SELECT
-                gid,
-                park_id,
-                park_name,
-                park_addre,
-                park_owner,
-                park_zip,
-                COALESCE(park_size_, NULLIF(shape_area,0) * 0.000247105,
-                         ST_Area(geography(geom)) * 0.000247105) AS area_acres,
-                ST_AsGeoJSON(ST_SimplifyPreserveTopology(ST_Transform(geom, 4326), ${len(params)}))::json AS geometry
-            FROM parks
-            WHERE {" OR ".join(where_clauses)}
-            LIMIT 5000;
-        """
+            # For geometry, we'll need to handle PostGIS conversion
+            # This is a simplified version - you may need to create a database function for full PostGIS support
+            geometry = row.get('geom', {})
 
-        rows = await conn.fetch(sql, *params)
-        return build_feature_collection([dict(row) for row in rows])
-    finally:
-        await conn.close()
+            features.append({
+                "type": "Feature",
+                "geometry": geometry if isinstance(geometry, dict) else json.loads(geometry) if geometry else {},
+                "properties": {
+                    "id": row['park_id'],
+                    "gid": row['gid'],
+                    "Park_id": row['park_id'],
+                    "Park_Name": row['park_name'],
+                    "Park_Addre": row['park_addre'],
+                    "Park_Owner": row['park_owner'],
+                    "Park_Zip": row['park_zip'],
+                    "Park_Size_Acres": area_acres,
+                }
+            })
+
+        return {"type": "FeatureCollection", "features": features}
+
+    except Exception as e:
+        logger.error(f"Error querying parks: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 async def query_park_area_by_id(park_id: str):
-    conn = await get_db_connection()
+    supabase = get_supabase()
     try:
-        sql = """
-            SELECT park_name,
-                   COALESCE(park_size_, NULLIF(shape_area,0) * 0.000247105,
-                            ST_Area(geography(geom)) * 0.000247105) AS area_acres
-            FROM parks
-            WHERE park_id = $1
-            LIMIT 1;
-        """
-        row = await conn.fetchrow(sql, park_id)
-        if not row:
+        # Query park data
+        response = supabase.table('parks').select(
+            'park_name, park_size_, shape_area'
+        ).eq('park_id', park_id).limit(1).execute()
+
+        if not response.data:
             return None
+
+        row = response.data[0]
+        # Calculate area_acres using COALESCE logic
+        area_acres = row.get('park_size_') or (row.get('shape_area', 0) * 0.000247105 if row.get('shape_area') else 0)
+
         return {
-            "name": row["park_name"] or "Unnamed Park",
-            "acres": row["area_acres"],
+            "name": row.get("park_name") or "Unnamed Park",
+            "acres": area_acres,
         }
-    finally:
-        await conn.close()
+    except Exception as e:
+        logger.error(f"Error querying park area by id {park_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 async def get_park_statistics_by_id(park_id: str):
-    conn = await get_db_connection()
+    supabase = get_supabase()
     try:
-        sql = """
-            SELECT SUM_TOTPOP, SUM_KIDSVC, SUM_YOUNGP, SUM_SENIOR,
-                   SUM_HHILOW, SUM_HHIMED, SUM_HHIHIG, SUM_TOTHHS,
-                   SUM_WHITE_, SUM_BLACK_, SUM_ASIAN_, SUM_HISP_S,
-                   PERACRE
-            FROM parks_stats
-            WHERE park_id = $1
-        """
-        row = await conn.fetchrow(sql, park_id)
-        return dict(row) if row else None
-    finally:
-        await conn.close()
+        response = supabase.table('parks_stats').select(
+            'sum_totpop, sum_kidsvc, sum_youngp, sum_senior, '
+            'sum_hhilow, sum_hhimed, sum_hhihig, sum_tothhs, '
+            'sum_white_, sum_black_, sum_asian_, sum_hisp_s, peracre'
+        ).eq('park_id', park_id).execute()
 
-async def query_park_stat_by_id(park_id: str, metric: str):
-    conn = await get_db_connection()
-    try:
-        sql = f"SELECT {metric} FROM parks_stats WHERE park_id = $1 LIMIT 1"
-        row = await conn.fetchrow(sql, park_id)
-        if not row:
+        if not response.data:
             return None
 
+        return response.data[0]
+    except Exception as e:
+        logger.error(f"Error getting park statistics by id {park_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+async def query_park_stat_by_id(park_id: str, metric: str):
+    supabase = get_supabase()
+    try:
+        # Convert metric to lowercase for PostgreSQL compatibility
+        metric_lower = metric.lower()
+
+        # Query with the specific metric
+        response = supabase.table('parks_stats').select(metric_lower).eq('park_id', park_id).limit(1).execute()
+
+        if not response.data:
+            return None
+
+        row = response.data[0]
+
+        # Get the value using lowercase key
         try:
-            value = row[metric]
+            value = row[metric_lower]
         except KeyError:
-            try:
-                value = row[metric.lower()]
-            except KeyError:
-                logger.error(f"Column not found: {metric} (tried both original and lowercase)")
-                return None
+            logger.error(f"Column not found: {metric_lower}")
+            return None
+
         return {
             "value": value,
             "formatted": f"{value:,}" if value else "0",
         }
-    finally:
-        await conn.close()
+    except Exception as e:
+        logger.error(f"Error querying park stat by id {park_id}, metric {metric}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 async def get_park_ndvi(park_id: str):
     from utils import geometry_from_geojson, compute_ndvi
-    conn = await get_db_connection()
+    supabase = get_supabase()
     try:
-        sql = "SELECT ST_AsGeoJSON(ST_Transform(geom, 4326))::json AS geometry FROM parks WHERE park_id = $1"
-        row = await conn.fetchrow(sql, park_id)
-        if not row:
+        # Query park geometry
+        response = supabase.table('parks').select('geom').eq('park_id', park_id).execute()
+
+        if not response.data:
             raise HTTPException(status_code=404, detail="Park not found")
 
+        row = response.data[0]
+        geometry = row.get("geom")
+
+        if not geometry:
+            raise HTTPException(status_code=400, detail="Park has no geometry")
+
         try:
-            geometry = geometry_from_geojson(row["geometry"])
-            ndvi_value = compute_ndvi(geometry)
+            park_geom = geometry_from_geojson(geometry)
+            ndvi_value = compute_ndvi(park_geom)
             return ndvi_value
         except ValueError as e:
             logger.error(f"Geometry error for park {park_id}: {e}")
@@ -180,36 +219,47 @@ async def get_park_ndvi(park_id: str):
         except Exception as e:
             logger.error(f"NDVI computation error for park {park_id}: {e}")
             raise HTTPException(status_code=500, detail=f"Error computing NDVI: {str(e)}")
-    finally:
-        await conn.close()
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting park NDVI for {park_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 async def get_park_information(park_id: str, client):
     from utils import geometry_from_geojson, assess_air_quality_and_damage
-    conn = await get_db_connection()
+    supabase = get_supabase()
     try:
-        sql = """
-            SELECT p.park_name, p.park_addre, p.park_owner, p.park_zip,
-                   COALESCE(p.park_size_, NULLIF(p.shape_area,0) * 0.000247105,
-                            ST_Area(geography(p.geom)) * 0.000247105) AS area_acres,
-                   ps.SUM_TOTPOP, ps.SUM_KIDSVC, ps.SUM_SENIOR, ps.PERACRE
-            FROM parks p
-            LEFT JOIN parks_stats ps ON p.park_id = ps.park_id
-            WHERE p.park_id = $1
-        """
-        row = await conn.fetchrow(sql, park_id)
-        if not row:
+        # Query park data with join to parks_stats
+        park_response = supabase.table('parks').select(
+            'park_name, park_addre, park_owner, park_zip, park_size_, shape_area, geom'
+        ).eq('park_id', park_id).execute()
+
+        if not park_response.data:
             raise HTTPException(status_code=404, detail="Park not found")
 
+        park_row = park_response.data[0]
+
+        # Query park statistics
+        stats_response = supabase.table('parks_stats').select(
+            'sum_totpop, sum_kidsvc, sum_senior, peracre'
+        ).eq('park_id', park_id).execute()
+
+        stats_row = stats_response.data[0] if stats_response.data else {}
+
+        # Calculate area_acres
+        area_acres = park_row.get('park_size_') or (park_row.get('shape_area', 0) * 0.000247105 if park_row.get('shape_area') else 0)
+
+        # Get NDVI value
         try:
             ndvi_value = await get_park_ndvi(park_id)
         except:
             ndvi_value = None
 
+        # Get air quality
         try:
-            geom_sql = "SELECT ST_AsGeoJSON(ST_Transform(geom, 4326))::json AS geometry FROM parks WHERE park_id = $1"
-            geom_row = await conn.fetchrow(geom_sql, park_id)
-            if geom_row:
-                park_geometry = geometry_from_geojson(geom_row["geometry"])
+            geometry = park_row.get("geom")
+            if geometry:
+                park_geometry = geometry_from_geojson(geometry)
                 air_quality = assess_air_quality_and_damage(park_geometry)
             else:
                 air_quality = None
@@ -218,15 +268,15 @@ async def get_park_information(park_id: str, client):
             air_quality = None
 
         park_data = {
-            "name": row["park_name"] or "Unnamed Park",
-            "address": row["park_addre"] or "Address not available",
-            "owner": row["park_owner"] or "Owner not specified",
-            "zipcode": row["park_zip"] or "Unknown",
-            "area_acres": round(row["area_acres"], 2) if row["area_acres"] else "Unknown",
-            "population_served": row["sum_totpop"] if row["sum_totpop"] else "Unknown",
-            "kids_served": row["sum_kidsvc"] if row["sum_kidsvc"] else "Unknown",
-            "seniors_served": row["sum_senior"] if row["sum_senior"] else "Unknown",
-            "per_acre_demand": row["peracre"] if row["peracre"] else "Unknown",
+            "name": park_row.get("park_name") or "Unnamed Park",
+            "address": park_row.get("park_addre") or "Address not available",
+            "owner": park_row.get("park_owner") or "Owner not specified",
+            "zipcode": park_row.get("park_zip") or "Unknown",
+            "area_acres": round(area_acres, 2) if area_acres else "Unknown",
+            "population_served": stats_row.get("sum_totpop") if stats_row.get("sum_totpop") else "Unknown",
+            "kids_served": stats_row.get("sum_kidsvc") if stats_row.get("sum_kidsvc") else "Unknown",
+            "seniors_served": stats_row.get("sum_senior") if stats_row.get("sum_senior") else "Unknown",
+            "per_acre_demand": stats_row.get("peracre") if stats_row.get("peracre") else "Unknown",
             "ndvi": round(ndvi_value, 3) if ndvi_value else "Unknown",
             "air_quality": air_quality
         }
@@ -288,24 +338,28 @@ With a vegetation health index (NDVI) of {park_data['ndvi']}, it contributes to 
             "description": description,
             "details": park_data
         }
-    finally:
-        await conn.close()
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting park information for {park_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 async def get_park_air_quality(park_id: str):
     from utils import geometry_from_geojson, assess_air_quality_and_damage
-    conn = await get_db_connection()
+    supabase = get_supabase()
     try:
-        sql = """
-            SELECT park_name, ST_AsGeoJSON(ST_Transform(geom, 4326))::json AS geometry
-            FROM parks
-            WHERE park_id = $1
-        """
-        row = await conn.fetchrow(sql, park_id)
-        if not row:
+        # Query park data
+        response = supabase.table('parks').select('park_name, geom').eq('park_id', park_id).execute()
+
+        if not response.data:
             raise HTTPException(status_code=404, detail="Park not found")
 
-        park_name = row["park_name"] or "Unnamed Park"
-        geometry = row["geometry"]
+        row = response.data[0]
+        park_name = row.get("park_name") or "Unnamed Park"
+        geometry = row.get("geom")
+
+        if not geometry:
+            raise HTTPException(status_code=400, detail="Park has no geometry")
 
         try:
             park_geom = geometry_from_geojson(geometry)
@@ -324,30 +378,35 @@ async def get_park_air_quality(park_id: str):
         except Exception as e:
             logger.error(f"Air quality computation error for park {park_id}: {e}")
             raise HTTPException(status_code=500, detail=f"Error computing air quality: {str(e)}")
-    finally:
-        await conn.close()
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting park air quality for {park_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 async def analyze_park_removal_impact(park_id: str, land_use_type: str = "removed"):
     from utils import (geometry_from_geojson, compute_ndvi, compute_walkability,
                       compute_pm25, compute_population, simulate_replacement_with_buildings)
 
-    conn = await get_db_connection()
+    supabase = get_supabase()
     try:
-        sql = """
-            SELECT park_name, ST_AsGeoJSON(ST_Transform(geom, 4326))::json AS geometry
-            FROM parks_stats
-            WHERE park_id = $1
-        """
-        row = await conn.fetchrow(sql, park_id)
-        if not row:
+        # Query park data from parks_stats
+        response = supabase.table('parks_stats').select('park_name, geom').eq('park_id', park_id).execute()
+
+        if not response.data:
             return None
 
-        park_name = row["park_name"]
-        geometry = row["geometry"]
+        row = response.data[0]
+        park_name = row.get("park_name")
+        geometry = row.get("geom")
 
+        # Get park statistics
         stats = await get_park_statistics_by_id(park_id)
         if not stats:
             raise HTTPException(status_code=404, detail="Park statistics not found")
+
+        if not geometry:
+            raise HTTPException(status_code=400, detail="Park has no geometry")
 
         try:
             park_geom = geometry_from_geojson(geometry)
@@ -420,25 +479,29 @@ async def analyze_park_removal_impact(park_id: str, land_use_type: str = "remove
             },
             "message": f"Environmental Impact Summary:\n\n🏞️ VEGETATION HEALTH (NDVI)\n   • Before: {round(ndvi_before, 3) if ndvi_before else 'Unknown'}\n   • After: {round(ndvi_after, 3) if ndvi_after else 'Unknown'}\n   • Loss: {round((ndvi_before - ndvi_after) * 100, 1) if ndvi_before and ndvi_after else 'Unknown'}% vegetation decline\n\n👥 PEOPLE AFFECTED\n   • Total population losing access: {stats.get('sum_totpop', 0):,} people\n   • Demographics: {stats.get('sum_kidsvc', 0):,} kids, {stats.get('sum_youngp', 0):,} adults, {stats.get('sum_senior', 0):,} seniors\n\n🏭 AIR QUALITY (PM2.5)\n   • Before removal: {round(pm25_before, 2) if pm25_before else 'Unknown'} μg/m³\n   • After removal: {round(pm25_after, 2) if pm25_after else 'Unknown'} μg/m³\n   • Pollution increase: +{round(pm25_increase_percent, 1) if pm25_increase_percent else 'Unknown'}% ({'+' if pm25_increase else ''}{round(pm25_increase, 2) if pm25_increase else 'Unknown'} μg/m³)\n\nRemoving {park_name} would significantly impact {stats.get('sum_totpop', 0):,} residents through reduced air quality, loss of green space, and decreased environmental health.",
         }
-    finally:
-        await conn.close()
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error analyzing park removal impact for {park_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 async def analyze_park_removal_pollution_impact(park_id: str, land_use_type: str = "removed"):
     from utils import geometry_from_geojson, compute_pm25, get_health_risk_category, get_environmental_damage_level
 
-    conn = await get_db_connection()
+    supabase = get_supabase()
     try:
-        sql = """
-            SELECT park_name, ST_AsGeoJSON(ST_Transform(geom, 4326))::json AS geometry
-            FROM parks
-            WHERE park_id = $1
-        """
-        row = await conn.fetchrow(sql, park_id)
-        if not row:
+        # Query park data
+        response = supabase.table('parks').select('park_name, geom').eq('park_id', park_id).execute()
+
+        if not response.data:
             return None
 
-        park_name = row["park_name"] or "Unnamed Park"
-        geometry = row["geometry"]
+        row = response.data[0]
+        park_name = row.get("park_name") or "Unnamed Park"
+        geometry = row.get("geom")
+
+        if not geometry:
+            raise HTTPException(status_code=400, detail="Park has no geometry")
 
         try:
             park_geom = geometry_from_geojson(geometry)
@@ -488,5 +551,8 @@ async def analyze_park_removal_pollution_impact(park_id: str, land_use_type: str
         except Exception as e:
             logger.error(f"Error in pollution impact analysis: {e}")
             return None
-    finally:
-        await conn.close()
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error analyzing park removal pollution impact for {park_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
