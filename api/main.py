@@ -41,8 +41,23 @@ warnings.filterwarnings("ignore", category=UserWarning, module="pydantic")
 # Session storage for tracking removal analysis results
 session_storage: Dict[str, Dict[str, Any]] = {}
 
+# Initialize Earth Engine with service account or default credentials
 gee_project_id = os.getenv('GEE_PROJECT_ID')
-ee.Initialize(project=gee_project_id)
+gee_service_account = os.getenv('GEE_SERVICE_ACCOUNT')
+
+if gee_service_account:
+    # Production: Use service account credentials
+    try:
+        credentials = ee.ServiceAccountCredentials(gee_service_account, key_data=os.getenv('GEE_PRIVATE_KEY'))
+        ee.Initialize(credentials, project=gee_project_id)
+        logger.info("Earth Engine initialized with service account")
+    except Exception as e:
+        logger.error(f"Failed to initialize Earth Engine with service account: {e}")
+        raise
+else:
+    # Local development: Use default credentials
+    ee.Initialize(project=gee_project_id)
+    logger.info("Earth Engine initialized with default credentials")
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
