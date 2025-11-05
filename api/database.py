@@ -19,11 +19,9 @@ def get_supabase() -> Client:
     if _supabase_client is None:
         logger.info("Initializing Supabase client...")
 
-        # Get Supabase URL and key from environment
         supabase_url = os.getenv("SUPABASE_URL")
         supabase_key = os.getenv("SUPABASE_KEY")
 
-        # If not set, construct from PGHOST
         if not supabase_url:
             pghost = os.getenv("PGHOST", "")
             if "supabase.co" in pghost:
@@ -73,13 +71,10 @@ async def query_parks_by_location(query, simplify_tolerance: float = 0.0002):
     supabase = get_supabase()
 
     try:
-        # Build the query using Supabase filters
         db_query = supabase.table('parks').select(
             'gid, park_id, park_name, park_addre, park_owner, park_zip, '
             'park_size_, shape_area, geom'
         )
-
-        # Apply filters
         if query.zip:
             db_query = db_query.eq('park_zip', query.zip)
         elif query.city:
@@ -87,20 +82,12 @@ async def query_parks_by_location(query, simplify_tolerance: float = 0.0002):
         elif query.state:
             db_query = db_query.ilike('park_state', query.state)
         else:
-            # No filter provided, return empty
             return {"type": "FeatureCollection", "features": []}
-
-        # Execute query
         response = db_query.limit(5000).execute()
 
-        # Process results - transform geometry data
         features = []
         for row in response.data:
-            # Calculate area
             area_acres = row.get('park_size_') or (row.get('shape_area', 0) * 0.000247105 if row.get('shape_area') else 0)
-
-            # For geometry, we'll need to handle PostGIS conversion
-            # This is a simplified version - you may need to create a database function for full PostGIS support
             geometry = row.get('geom', {})
 
             features.append({
@@ -136,7 +123,6 @@ async def query_park_area_by_id(park_id: str):
             return None
 
         row = response.data[0]
-        # Calculate area_acres using COALESCE logic
         area_acres = row.get('park_size_') or (row.get('shape_area', 0) * 0.000247105 if row.get('shape_area') else 0)
 
         return {
@@ -167,18 +153,13 @@ async def get_park_statistics_by_id(park_id: str):
 async def query_park_stat_by_id(park_id: str, metric: str):
     supabase = get_supabase()
     try:
-        # Convert metric to lowercase for PostgreSQL compatibility
         metric_lower = metric.lower()
-
-        # Query with the specific metric
         response = supabase.table('parks_stats').select(metric_lower).eq('park_id', park_id).limit(1).execute()
 
         if not response.data:
             return None
 
         row = response.data[0]
-
-        # Get the value using lowercase key
         try:
             value = row[metric_lower]
         except KeyError:
@@ -197,7 +178,6 @@ async def get_park_ndvi(park_id: str):
     from utils import geometry_from_geojson, compute_ndvi
     supabase = get_supabase()
     try:
-        # Query park geometry
         response = supabase.table('parks').select('geom').eq('park_id', park_id).execute()
 
         if not response.data:
@@ -229,7 +209,6 @@ async def get_park_information(park_id: str, client):
     from utils import geometry_from_geojson, assess_air_quality_and_damage
     supabase = get_supabase()
     try:
-        # Query park data with join to parks_stats
         park_response = supabase.table('parks').select(
             'park_name, park_addre, park_owner, park_zip, park_size_, shape_area, geom'
         ).eq('park_id', park_id).execute()
@@ -238,24 +217,17 @@ async def get_park_information(park_id: str, client):
             raise HTTPException(status_code=404, detail="Park not found")
 
         park_row = park_response.data[0]
-
-        # Query park statistics
         stats_response = supabase.table('parks_stats').select(
             'sum_totpop, sum_kidsvc, sum_senior, peracre'
         ).eq('park_id', park_id).execute()
 
         stats_row = stats_response.data[0] if stats_response.data else {}
-
-        # Calculate area_acres
         area_acres = park_row.get('park_size_') or (park_row.get('shape_area', 0) * 0.000247105 if park_row.get('shape_area') else 0)
-
-        # Get NDVI value
         try:
             ndvi_value = await get_park_ndvi(park_id)
         except:
             ndvi_value = None
 
-        # Get air quality
         try:
             geometry = park_row.get("geom")
             if geometry:
@@ -348,7 +320,6 @@ async def get_park_air_quality(park_id: str):
     from utils import geometry_from_geojson, assess_air_quality_and_damage
     supabase = get_supabase()
     try:
-        # Query park data
         response = supabase.table('parks').select('park_name, geom').eq('park_id', park_id).execute()
 
         if not response.data:
@@ -386,11 +357,10 @@ async def get_park_air_quality(park_id: str):
 
 async def analyze_park_removal_impact(park_id: str, land_use_type: str = "removed"):
     from utils import (geometry_from_geojson, compute_ndvi, compute_walkability,
-                      compute_pm25, compute_population, simulate_replacement_with_buildings)
+                    compute_pm25, compute_population, simulate_replacement_with_buildings)
 
     supabase = get_supabase()
     try:
-        # Query park data from parks_stats
         response = supabase.table('parks_stats').select('park_name, geom').eq('park_id', park_id).execute()
 
         if not response.data:
@@ -400,7 +370,6 @@ async def analyze_park_removal_impact(park_id: str, land_use_type: str = "remove
         park_name = row.get("park_name")
         geometry = row.get("geom")
 
-        # Get park statistics
         stats = await get_park_statistics_by_id(park_id)
         if not stats:
             raise HTTPException(status_code=404, detail="Park statistics not found")
@@ -490,7 +459,6 @@ async def analyze_park_removal_pollution_impact(park_id: str, land_use_type: str
 
     supabase = get_supabase()
     try:
-        # Query park data
         response = supabase.table('parks').select('park_name, geom').eq('park_id', park_id).execute()
 
         if not response.data:
