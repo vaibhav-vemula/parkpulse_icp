@@ -1,11 +1,7 @@
 import os
-import json
 import asyncio
-from typing import Optional, Dict, Any, List
-from datetime import datetime
+from typing import Optional, Dict, Any
 from contextlib import asynccontextmanager
-import asyncpg
-import ee
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -41,30 +37,7 @@ logger = logging.getLogger(__name__)
 
 session_storage: Dict[str, Dict[str, Any]] = {}
 
-gee_project_id = os.getenv('GEE_PROJECT_ID')
-gee_service_account = os.getenv('GEE_SERVICE_ACCOUNT')
-gee_private_key = os.getenv('GEE_PRIVATE_KEY')
-
-if gee_service_account and gee_private_key:
-    try:
-        service_account_info = {
-            "type": "service_account",
-            "project_id": gee_project_id,
-            "private_key": gee_private_key.replace('\\n', '\n'),
-            "client_email": gee_service_account,
-            "token_uri": "https://oauth2.googleapis.com/token",
-            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-            "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs"
-        }
-        credentials = ee.ServiceAccountCredentials(gee_service_account, key_data=json.dumps(service_account_info))
-        ee.Initialize(credentials, project=gee_project_id)
-        logger.info("Earth Engine initialized with service account")
-    except Exception as e:
-        logger.error(f"Failed to initialize Earth Engine with service account: {e}")
-        raise
-else:
-    ee.Initialize(project=gee_project_id)
-    logger.info("Earth Engine initialized with default credentials")
+# Earth Engine initialization moved to utils.py for lazy loading
 
 
 @asynccontextmanager

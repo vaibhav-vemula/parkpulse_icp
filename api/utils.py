@@ -9,7 +9,43 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+ee_initialized = False
+
+def ensure_ee_initialized():
+    """Lazy initialization of Earth Engine (for serverless compatibility)"""
+    global ee_initialized
+    if ee_initialized:
+        return
+
+    try:
+        gee_project_id = os.getenv('GEE_PROJECT_ID')
+        gee_service_account = os.getenv('GEE_SERVICE_ACCOUNT')
+        gee_private_key = os.getenv('GEE_PRIVATE_KEY')
+
+        if gee_service_account and gee_private_key:
+            service_account_info = {
+                "type": "service_account",
+                "project_id": gee_project_id,
+                "private_key": gee_private_key.replace('\\n', '\n'),
+                "client_email": gee_service_account,
+                "token_uri": "https://oauth2.googleapis.com/token",
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs"
+            }
+            credentials = ee.ServiceAccountCredentials(gee_service_account, key_data=json.dumps(service_account_info))
+            ee.Initialize(credentials, project=gee_project_id)
+            logger.info("Earth Engine initialized with service account")
+        else:
+            ee.Initialize(project=gee_project_id)
+            logger.info("Earth Engine initialized with default credentials")
+        ee_initialized = True
+    except Exception as e:
+        logger.error(f"Failed to initialize Earth Engine: {e}")
+        # Don't raise - allow app to continue without EE features
+        pass
+
 def geometry_from_geojson(geojson):
+    ensure_ee_initialized()
     try:
         if not geojson:
             raise ValueError("GeoJSON is None or empty")
