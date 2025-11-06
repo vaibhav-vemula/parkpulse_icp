@@ -42,8 +42,23 @@ export default function Home() {
   const [selectedParkName, setSelectedParkName] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [principal, setPrincipal] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatSectionRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    async function loadPrincipal() {
+      try {
+        const p = await getPrincipal();
+        if (p && p !== '2vxsx-fae') {
+          setPrincipal(p);
+        }
+      } catch (error) {
+        console.error('Error loading principal:', error);
+      }
+    }
+    loadPrincipal();
+  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -99,7 +114,8 @@ export default function Home() {
       const response = await sendAgentMessage(
         messageText,
         sessionId || undefined,
-        selectedParkId || undefined
+        selectedParkId || undefined,
+        principal || undefined
       );
 
       if (response.sessionId) {

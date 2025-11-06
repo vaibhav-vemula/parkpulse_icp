@@ -524,3 +524,74 @@ async def analyze_park_removal_pollution_impact(park_id: str, land_use_type: str
     except Exception as e:
         logger.error(f"Error analyzing park removal pollution impact for {park_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+async def save_user_profile(profile_data: dict):
+    """Save or update user profile in Supabase"""
+    supabase = get_supabase()
+    try:
+        principal_id = profile_data['principal_id']
+
+        # Check if profile exists
+        existing = supabase.table('users').select('principal_id').eq('principal_id', principal_id).execute()
+
+        if existing.data:
+            # Update existing profile
+            response = supabase.table('users').update({
+                'name': profile_data.get('name'),
+                'email': profile_data.get('email'),
+                'address_line1': profile_data.get('address_line1'),
+                'city': profile_data.get('city'),
+                'state': profile_data.get('state'),
+                'pincode': profile_data.get('pincode'),
+                'is_government_employee': profile_data.get('is_government_employee', False),
+                'pin': profile_data.get('pin')
+            }).eq('principal_id', principal_id).execute()
+        else:
+            # Insert new profile
+            response = supabase.table('users').insert({
+                'principal_id': principal_id,
+                'name': profile_data.get('name'),
+                'email': profile_data.get('email'),
+                'address_line1': profile_data.get('address_line1'),
+                'city': profile_data.get('city'),
+                'state': profile_data.get('state'),
+                'pincode': profile_data.get('pincode'),
+                'is_government_employee': profile_data.get('is_government_employee', False),
+                'pin': profile_data.get('pin')
+            }).execute()
+
+        return response.data[0] if response.data else None
+    except Exception as e:
+        logger.error(f"Error saving user profile: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+async def get_user_profile(principal_id: str):
+    """Get user profile from Supabase"""
+    supabase = get_supabase()
+    try:
+        response = supabase.table('users').select('*').eq('principal_id', principal_id).execute()
+
+        if not response.data:
+            return None
+
+        return response.data[0]
+    except Exception as e:
+        logger.error(f"Error getting user profile: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+async def get_all_user_emails():
+    """Get all user emails from Supabase (users who have email set)"""
+    supabase = get_supabase()
+    try:
+        response = supabase.table('users').select('email').not_.is_('email', 'null').execute()
+
+        if not response.data:
+            return []
+
+        # Extract just the email addresses
+        emails = [user['email'] for user in response.data if user.get('email')]
+        logger.info(f"Retrieved {len(emails)} user emails from database")
+        return emails
+    except Exception as e:
+        logger.error(f"Error getting user emails: {e}")
+        return []

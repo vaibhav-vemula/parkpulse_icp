@@ -22,12 +22,40 @@ export default function WalletStatus() {
         // Check if not anonymous
         if (p && p !== '2vxsx-fae') {
           setPrincipal(p);
+          // Auto-create database entry for new users
+          await ensureUserInDatabase(p);
         }
       }
     } catch (error) {
       console.error('Error checking authentication:', error);
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  async function ensureUserInDatabase(principalId: string) {
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      // Try to get the profile
+      const response = await fetch(`${apiUrl}/api/user/profile/${principalId}`);
+      const data = await response.json();
+
+      // If profile doesn't exist, create an empty one
+      if (!data.success || !data.data) {
+        await fetch(`${apiUrl}/api/user/profile`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            principal_id: principalId,
+            is_government_employee: false,
+          }),
+        });
+        console.log('Created new user profile in database');
+      }
+    } catch (error) {
+      console.error('Error ensuring user in database:', error);
     }
   }
 
@@ -72,13 +100,17 @@ export default function WalletStatus() {
   return (
     <div className="fixed top-6 right-6 z-50 flex items-center gap-3">
       <div className="flex items-center gap-3 px-5 py-3 bg-slate-900/90 backdrop-blur-md border-2 border-emerald-500/30 rounded-full shadow-lg">
-        <div className="flex items-center gap-2">
+        <button
+          onClick={() => router.push('/profile')}
+          className="flex items-center gap-2 hover:bg-slate-800/50 px-2 py-1 rounded-full transition-colors"
+          title="View Profile"
+        >
           <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
           <Wallet size={18} className="text-emerald-400" />
           <span className="text-sm font-semibold text-gray-200">
             {shortenPrincipal(principal)}
           </span>
-        </div>
+        </button>
         <button
           onClick={handleLogout}
           className="ml-2 p-1.5 hover:bg-slate-800 rounded-full transition-colors group"

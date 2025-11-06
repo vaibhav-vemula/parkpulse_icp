@@ -2,13 +2,15 @@
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Sparkles, FileText, ArrowRight, Vote, Zap } from "lucide-react";
+import { Sparkles, FileText, ArrowRight, Vote, Zap, Mail, X } from "lucide-react";
 import WalletStatus from "@/components/WalletStatus";
 import AuthGuard from "@/components/AuthGuard";
+import { getPrincipal } from "@/lib/auth";
 
 export default function Options() {
   const router = useRouter();
   const [isClient, setIsClient] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
   const cursorGlowRef = useRef<HTMLDivElement>(null);
   const customCursorRef = useRef<HTMLDivElement>(null);
   const orb1Ref = useRef<HTMLDivElement>(null);
@@ -27,7 +29,27 @@ export default function Options() {
 
   useEffect(() => {
     setIsClient(true);
+    checkUserEmail();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  async function checkUserEmail() {
+    try {
+      const principal = await getPrincipal();
+      if (principal && principal !== '2vxsx-fae') {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+        const response = await fetch(`${apiUrl}/api/user/profile/${principal}`);
+        const data = await response.json();
+
+        // Show modal if no email is set
+        if (data.success && data.data && !data.data.email) {
+          setShowEmailModal(true);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking user email:', error);
+    }
+  }
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -381,6 +403,51 @@ export default function Options() {
       >
         <div className="w-4 h-4 bg-emerald-400 rounded-full opacity-80"></div>
       </div>
+
+      {/* Email Modal */}
+      {showEmailModal && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="bg-gradient-to-br from-slate-900 to-slate-800 border-2 border-emerald-500/30 rounded-2xl shadow-2xl max-w-md w-full p-8 relative animate-in zoom-in-95 duration-300">
+            {/* Close button */}
+            <button
+              onClick={() => setShowEmailModal(false)}
+              className="absolute top-4 right-4 p-2 text-gray-400 hover:text-white transition-colors rounded-lg hover:bg-slate-700/50"
+            >
+              <X size={20} />
+            </button>
+
+            {/* Icon */}
+            <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-2xl flex items-center justify-center mb-6 mx-auto shadow-lg shadow-emerald-500/50">
+              <Mail className="text-white" size={32} strokeWidth={2.5} />
+            </div>
+
+            {/* Content */}
+            <h2 className="text-2xl font-bold text-white mb-3 text-center">
+              Email Required
+            </h2>
+            <p className="text-gray-300 text-center mb-6 leading-relaxed">
+              Please add your email to your profile to receive important proposal updates and community notifications.
+            </p>
+
+            {/* Buttons */}
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => router.push('/profile')}
+                className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-semibold rounded-lg transition-all shadow-lg shadow-emerald-500/30 hover:shadow-emerald-500/50"
+              >
+                <Mail size={20} />
+                <span>Go to Profile</span>
+              </button>
+              <button
+                onClick={() => setShowEmailModal(false)}
+                className="w-full px-6 py-3 text-gray-400 hover:text-white font-medium transition-colors"
+              >
+                Maybe Later
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AuthGuard>
   );
 }

@@ -6,6 +6,7 @@ class AgentRequest(BaseModel):
     message: str
     uiContext: Optional[Dict[str, Any]] = None
     sessionId: Optional[str] = None
+    principalId: Optional[str] = None
 
 class LocationQuery(BaseModel):
     zip: Optional[str] = None
@@ -53,3 +54,14 @@ class IntentClassification(BaseModel):
     unit: Optional[Unit] = None
     landUseType: Optional[LandUseType] = None
     metric: Optional[str] = None
+
+class UserProfile(BaseModel):
+    principal_id: str
+    name: Optional[str] = None
+    email: Optional[str] = None
+    address_line1: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    pincode: Optional[str] = None
+    is_government_employee: bool = False
+    pin: Optional[str] = None

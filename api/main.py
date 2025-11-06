@@ -15,11 +15,12 @@ from database import (
     init_db, close_db, query_parks_by_location, query_park_area_by_id,
     get_park_statistics_by_id, query_park_stat_by_id, get_park_ndvi,
     get_park_information, get_park_air_quality, analyze_park_removal_impact,
-    analyze_park_removal_pollution_impact
+    analyze_park_removal_pollution_impact, save_user_profile, get_user_profile
 )
 from models import (
     AgentRequest, LocationQuery, AnalyzeRequest, NDVIRequest,
-    Intent, LocationType, Unit, LandUseType, IntentClassification
+    Intent, LocationType, Unit, LandUseType, IntentClassification,
+    UserProfile
 )
 from utils import (
     geometry_from_geojson, compute_ndvi, compute_walkability, compute_pm25,
@@ -141,6 +142,41 @@ async def get_parks_by_zipcode(zipcode: str):
 
     except Exception as e:
         logger.error(f"Error fetching parks for zipcode {zipcode}: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.post("/api/user/profile")
+async def save_profile(profile: UserProfile):
+    """Save or update user profile"""
+    try:
+        logger.info(f"Saving profile for principal {profile.principal_id}")
+        result = await save_user_profile(profile.dict())
+        return {
+            "success": True,
+            "data": result
+        }
+    except Exception as e:
+        logger.error(f"Error saving user profile: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.get("/api/user/profile/{principal_id}")
+async def get_profile(principal_id: str):
+    """Get user profile by principal ID"""
+    try:
+        logger.info(f"Fetching profile for principal {principal_id}")
+        profile = await get_user_profile(principal_id)
+
+        if not profile:
+            return {
+                "success": False,
+                "error": "Profile not found"
+            }
+
+        return {
+            "success": True,
+            "data": profile
+        }
+    except Exception as e:
+        logger.error(f"Error fetching user profile: {e}")
         return {"success": False, "error": str(e)}
 
 if __name__ == "__main__":

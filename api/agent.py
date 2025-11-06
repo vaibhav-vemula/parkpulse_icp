@@ -8,8 +8,9 @@ from models import AgentRequest, LocationQuery, IntentClassification, AnalyzeReq
 from database import (
     query_parks_by_location, query_park_area_by_id, query_park_stat_by_id,
     get_park_ndvi, get_park_information, get_park_air_quality,
-    analyze_park_removal_impact
+    analyze_park_removal_impact, get_user_profile, get_all_user_emails
 )
+from email_service import email_service
 from utils import (
     geometry_from_geojson, compute_ndvi, compute_walkability, compute_pm25,
     compute_population, simulate_replacement_with_buildings
@@ -28,6 +29,7 @@ async def handle_agent_request(request: AgentRequest, client: genai.Client):
         ui_context = request.uiContext or {}
         selected_park_id = ui_context.get("selectedParkId")
         session_id = request.sessionId or str(int(datetime.now().timestamp() * 1000000) % 1000000)
+        principal_id = request.principalId
         prompt = f"""Analyze this user query about parks and classify the intent:
 
 User query: "{message}"
@@ -141,7 +143,7 @@ Examples:
         elif parsed.get("intent") == "air_quality_query":
             return await handle_air_quality_query_intent(selected_park_id, session_id)
         elif parsed.get("intent") == "create_proposal":
-            return await handle_create_proposal_intent(selected_park_id, session_id, message)
+            return await handle_create_proposal_intent(selected_park_id, session_id, message, principal_id)
         elif parsed.get("intent") == "greeting":
             return handle_greeting_intent(session_id)
 
@@ -340,8 +342,24 @@ def handle_greeting_intent(session_id):
         "reply": reply,
     }
 
-async def handle_create_proposal_intent(selected_park_id, session_id, message):
+async def handle_create_proposal_intent(selected_park_id, session_id, message, principal_id):
     """Handle create proposal intent"""
+    # Check if user is a government employee
+    if not principal_id:
+        return {
+            "sessionId": session_id,
+            "action": "error",
+            "reply": "Authentication required to create proposals. Please log in with your Internet Identity.",
+        }
+
+    user_profile = await get_user_profile(principal_id)
+    if not user_profile or not user_profile.get("is_government_employee"):
+        return {
+            "sessionId": session_id,
+            "action": "error",
+            "reply": "⚠️ Only government employees and invited individuals can create proposals. If you believe you should have access, please contact the ParkPulse team to get verified.",
+        }
+
     storage = get_session_storage()
     if session_id not in storage or "latest_removal_analysis" not in storage[session_id]:
         return {
@@ -437,6 +455,31 @@ Keep it concise, professional, and compelling. DO NOT use markdown formatting or
         "creator": "community_agent",
         "timestamp": datetime.now().isoformat()
     }
+    # Send email notifications to all users
+    try:
+        user_emails = await get_all_user_emails()
+        if user_emails:
+            logger.info(f"Sending proposal notifications to {len(user_emails)} users")
+            # Use a shorter description for email
+            email_description = proposal_summary[:300] + "..." if len(proposal_summary) > 300 else proposal_summary
+
+            # Send emails asynchronously (don't block the response)
+            import asyncio
+            asyncio.create_task(
+                asyncio.to_thread(
+                    email_service.send_proposal_notifications_to_all,
+                    park_name=park_name,
+                    proposal_id=0,  # Will be set by blockchain
+                    end_date=end_date,
+                    description=email_description,
+                    user_emails=user_emails
+                )
+            )
+            logger.info("Email notifications scheduled for delivery")
+    except Exception as e:
+        logger.error(f"Error scheduling email notifications: {e}")
+        # Don't fail the proposal creation if email fails
+
     reply = f"""✅ **Proposal ready for blockchain submission!**
 
 **Park:** {park_name}
@@ -447,7 +490,9 @@ Keep it concise, professional, and compelling. DO NOT use markdown formatting or
 • PM2.5 increase: +{analysis_data.get('pm25IncreasePercent', 'Unknown')}%
 • Affected residents: {analysis_data.get('affectedPopulation10MinWalk', 0):,}
 
-The proposal data is ready. Your frontend will now submit this to the ICP blockchain for community voting."""
+The proposal data is ready. Your frontend will now submit this to the ICP blockchain for community voting.
+
+📧 Email notifications will be sent to all registered users."""
 
     return {
         "sessionId": session_id,
