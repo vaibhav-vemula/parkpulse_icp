@@ -1,331 +1,399 @@
-# ParkPulse.ai - Community-Driven Urban Green Space Platform
+<div align="center">
 
-A decentralized platform for analyzing urban parks and creating community proposals on the Internet Computer blockchain.
+# 🌳 ParkPulse.ai
+
+### AI-Powered Urban Green Space Intelligence Platform
+
+[![Next.js](https://img.shields.io/badge/Next.js-15-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com/)
+[![ICP](https://img.shields.io/badge/Internet_Computer-Blockchain-29ABE2?style=for-the-badge&logo=internet-computer)](https://internetcomputer.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
+[![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=for-the-badge&logo=python)](https://www.python.org/)
+
+[Live Demo](https://parkpulseai.vercel.app) • [Architecture Docs](./ARCHITECTURE.md) • [Flow Diagrams](./HIGH_LEVEL_FLOW.md) • [API Docs](https://parkpulse-be.fly.dev/docs)
+
+</div>
 
 ---
 
-## 🎯 What This App Does
+## 📖 Overview
 
-1. **Discover Parks** - Search parks by zipcode, city, or state
-2. **Analyze Impact** - AI-powered environmental impact analysis using satellite data
-3. **Create Proposals** - Submit community proposals to the ICP blockchain
-4. **Vote & Govern** - Community voting on park-related initiatives
+**ParkPulse.ai** is a decentralized platform that combines artificial intelligence, satellite data analysis, and blockchain technology to empower communities in making informed decisions about urban green spaces. Through natural language interaction and real-time environmental analysis, citizens can analyze park impacts, create proposals, and participate in transparent, on-chain governance.
+
+### 🎯 Mission
+
+Transform urban planning from top-down decision-making to community-driven governance backed by data, science, and transparency.
+
+---
+
+## ✨ Key Features
+
+### 🤖 AI-Powered Chat Assistant
+- **Natural Language Queries** - Ask questions in plain English
+- **Powered by Google Gemini 2.0** - State-of-the-art language understanding
+- **Context-Aware Responses** - Remembers conversation history and selected parks
+
+### 🛰️ Environmental Impact Analysis
+- **NDVI Calculation** - Vegetation health assessment using satellite imagery
+- **Air Quality Monitoring** - PM2.5 pollution levels via Google Earth Engine
+- **Population Impact** - Affected residents within 10-minute walking radius
+- **Demographics Analysis** - Breakdown by age groups (children, adults, seniors)
+
+### 🗳️ Decentralized Governance (DAO)
+- **Blockchain Proposals** - Immutable proposal storage on Internet Computer
+- **Community Voting** - Transparent, on-chain voting mechanism
+- **Government Verification** - PIN-based verification for authorized proposal creators
+- **Email Notifications** - Automatic notifications to all registered users
+
+### 👤 User Management
+- **Internet Identity Login** - Secure, decentralized authentication
+- **User Profiles** - Manage personal information and preferences
+- **Email Integration** - Stay updated on new proposals
+- **Government Employee Access** - Special privileges for verified officials
+
+### 🗺️ Interactive Mapping
+- **Leaflet.js Integration** - Beautiful, responsive maps
+- **Park Selection** - Click parks to view details and analysis
+- **Real-time Updates** - Dynamic map updates based on queries
 
 ---
 
 ## 🏗️ Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│  Frontend (Next.js)                                      │
-│  - Interactive map with park selection                   │
-│  - AI chat interface (Gemini AI)                         │
-│  - ICP blockchain integration                            │
-└────────────────┬────────────────────────────────────────┘
-                 │
-                 ├──► Backend API (FastAPI)
-                 │    - Natural language processing
-                 │    - Environmental data analysis
-                 │    - Session management
-                 │
-                 ├──► PostgreSQL Database
-                 │    - Park geometries & metadata
-                 │    - Demographics data
-                 │
-                 ├──► Google Earth Engine
-                 │    - NDVI (vegetation health)
-                 │    - PM2.5 (air quality)
-                 │    - Satellite imagery analysis
-                 │
-                 └──► ICP Blockchain (Motoko)
-                      - Immutable proposal storage
-                      - Decentralized voting
-                      - Community governance
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         FRONTEND (Next.js 15 + TypeScript)                   │
+│                            Deployed on Vercel                                │
+│  ┌────────────────────────────────────────────────────────────────────────┐ │
+│  │  • Interactive Map (Leaflet)     • AI Chat Interface                   │ │
+│  │  • User Profiles                 • Proposal Voting UI                  │ │
+│  │  • Internet Identity Auth        • Email Notifications Modal           │ │
+│  └────────────────────────────────────────────────────────────────────────┘ │
+└────────────┬──────────────────────────┬──────────────────────────────────────┘
+             │ REST API                 │ Internet Identity
+             │                          │ Authentication
+             ▼                          ▼
+┌────────────────────────┐   ┌──────────────────────────────┐
+│  BACKEND (FastAPI)     │   │   ICP BLOCKCHAIN             │
+│  Deployed on Fly.io    │   │   (Smart Canister)           │
+│  ┌──────────────────┐  │   │   ┌───────────────────────┐  │
+│  │ AI Agent         │  │   │   │ • Proposal Storage    │  │
+│  │ Earth Engine API │  │   │   │ • Voting System       │  │
+│  │ Email Service    │  │   │   │ • DAO Governance      │  │
+│  │ User Management  │  │   │   │ • Vote Tracking       │  │
+│  └──────────────────┘  │   │   └───────────────────────┘  │
+└────┬───────────────────┘   └──────────────────────────────┘
+     │
+     ├─► Google Gemini AI (Intent Detection & Responses)
+     ├─► Google Earth Engine (Environmental Data)
+     ├─► Supabase (User & Park Data)
+     └─► Gmail SMTP (Email Notifications)
 ```
 
----
-
-## 📋 Prerequisites
-
-### Required Software
-
-| Software | Version | Installation |
-|----------|---------|--------------|
-| **Node.js** | 18+ | [Download](https://nodejs.org/) |
-| **Python** | 3.12+ | [Download](https://python.org/) |
-| **PostgreSQL** | 14+ | [Download](https://postgresql.org/) |
-| **dfx (ICP SDK)** | Latest | `sh -ci "$(curl -fsSL https://internetcomputer.org/install.sh)"` |
-
-### Required API Keys
-
-1. **Gemini API Key**
-   - Get from: https://ai.google.dev/
-   - Used for: Natural language processing
-
-2. **Google Earth Engine Project**
-   - Sign up: https://earthengine.google.com/
-   - Used for: Satellite data & environmental analysis
-
-### Database Setup
-
-You need a PostgreSQL database with:
-- Parks data (geometries, names, locations)
-- Demographics data
-- Environmental statistics
+> 📚 **Detailed Documentation:** See [ARCHITECTURE.md](./ARCHITECTURE.md) for system architecture and [HIGH_LEVEL_FLOW.md](./HIGH_LEVEL_FLOW.md) for user journey flows.
 
 ---
 
-## 🚀 Installation & Setup
+## 🚀 Quick Start
 
-### Step 1: Clone & Install Dependencies
+### Prerequisites
+
+| Requirement | Version | Installation |
+|-------------|---------|--------------|
+| Node.js | 18+ | [Download](https://nodejs.org/) |
+| Python | 3.12+ | [Download](https://python.org/) |
+| npm | 9+ | Comes with Node.js |
+
+### Installation
 
 ```bash
-# Navigate to project
-cd /hello
+# Clone the repository
+git clone https://github.com/yourusername/parkpulse.git
+cd parkpulse
 
 # Install backend dependencies
 cd api
-pip3 install -r requirements.txt
+pip install -r requirements.txt
 
 # Install frontend dependencies
 cd ../src/parkpulse_frontend
 npm install
 ```
 
-### Step 2: Configure Environment Variables
+### Environment Configuration
 
-#### Backend Configuration (`api/.env`)
+#### Backend (`.env`)
 
-```bash
-# Database
-PGHOST=localhost
-PGPORT=5432
-PGDATABASE=parksdb
-PGUSER=postgres
-PGPASSWORD=your_password
+Create `api/.env`:
 
-# API Keys
-GEMINI_API_KEY=your_gemini_api_key_here
+```env
+# Supabase Configuration
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_KEY=your_supabase_anon_key
+
+# AI & Environmental APIs
+GEMINI_API_KEY=your_gemini_api_key
 GEE_PROJECT_ID=your_gee_project_id
+
+# Email Configuration
+SMTP_SERVER=smtp.gmail.com
+SMTP_PORT=587
+SENDER_EMAIL=your_email@gmail.com
+SENDER_PASSWORD=your_app_password
+APP_URL=http://localhost:3000
 
 # Server
 PORT=4000
 ```
 
-#### Authenticate Google Earth Engine
+<details>
+<summary>📧 How to Get Gmail App Password</summary>
 
-```bash
-earthengine authenticate
-```
+1. Enable 2-factor authentication on your Google account
+2. Visit [Google App Passwords](https://myaccount.google.com/apppasswords)
+3. Create an app password for "Mail"
+4. Copy the 16-character password to `SENDER_PASSWORD`
 
-### Step 3: Start ICP Local Blockchain
+</details>
 
-```bash
-# Start the Internet Computer local replica
-dfx start --background
-
-# Deploy the Motoko canister
-dfx deploy parkpulse_backend
-
-# Get canister ID (save this!)
-dfx canister id parkpulse_backend
-```
-
-### Step 4: Configure Frontend
+#### Frontend (`.env.local`)
 
 Create `src/parkpulse_frontend/.env.local`:
 
-```bash
-# ICP Configuration
-NEXT_PUBLIC_ICP_CANISTER_ID=<paste-canister-id-from-step-3>
-NEXT_PUBLIC_ICP_HOST=http://127.0.0.1:4943
-NEXT_PUBLIC_ICP_NETWORK=local
-
-# API URL
+```env
 NEXT_PUBLIC_API_URL=http://localhost:4000
+NEXT_PUBLIC_ICP_NETWORK=ic
+NEXT_PUBLIC_CANISTER_ID=your_canister_id
 ```
 
----
+### Running the Application
 
-## ▶️ Running the Application
-
-### Terminal 1: Start Backend API
-
+#### Terminal 1: Start Backend
 ```bash
 cd api
-python3 main.py
+python main.py
 ```
 
-**Expected output:**
-```
-INFO:     Started server process
-INFO:     Uvicorn running on http://0.0.0.0:4000
-```
-
-### Terminal 2: Start Frontend
-
-**⚠️ IMPORTANT:** Run from the **root directory** (not from inside src/parkpulse_frontend)
-
+#### Terminal 2: Start Frontend
 ```bash
-# Navigate to project root
-cd /Users/vaibhav/Desktop/hello
-
-# Start frontend using npm workspace
-npm run dev --workspace=src/parkpulse_frontend
+cd src/parkpulse_frontend
+npm run dev
 ```
 
-**Expected output:**
-```
-▲ Next.js 15.5.4 (Turbopack)
-- Local:        http://localhost:3000
-✓ Ready in 809ms
-```
-
-**Why run from root?** This project uses npm workspaces. The root `package.json` manages the frontend workspace, so commands must be run from the root directory.
-
-### Terminal 3: Monitor ICP Blockchain (Optional)
-
-```bash
-# Check canister status
-dfx canister status parkpulse_backend
-
-# View logs
-dfx canister logs parkpulse_backend
-```
+#### Access the App
+Open [http://localhost:3000](http://localhost:3000)
 
 ---
 
-## 🎮 How to Use the App
+## 📱 How to Use
 
-### 1. Access the Application
-
-Open browser: **http://localhost:3000**
-
-### 2. Navigate to Chat Interface
-
-Click on **"Chat"** or navigate to **http://localhost:3000/chat**
-
-### 3. Search for Parks
-
-Type in the chat:
+### 1️⃣ Explore Parks with AI
 ```
-"show parks in zipcode 20008"
-```
-or
-```
-"show parks in city Austin"
+You: "Show me parks in Austin, Texas"
+AI: ✅ Loaded 20 parks for city: Austin
+    [Interactive map displays all parks]
+
+You: [Click on a park]
+AI: Selected: Zilker Park. Ask me anything!
+
+You: "What's the air quality here?"
+AI: 🌫️ PM2.5 Level: 8.5 μg/m³ (Good)
+    Health Risk: Low
 ```
 
-**What happens:**
-- AI processes your query
-- Backend fetches parks from PostgreSQL
-- Map displays parks in that area
-
-### 4. Select a Park
-
-**Click on any park** on the map
-
-**What happens:**
-- Park gets highlighted
-- Chat shows: "Selected: [Park Name]"
-- Park ID stored in session
-
-### 5. Analyze Environmental Impact
-
-Type in the chat:
+### 2️⃣ Analyze Environmental Impact
 ```
-"what happens if removed"
-```
-
-**What happens:**
-- Backend fetches park geometry
-- Google Earth Engine analyzes:
-  - NDVI (vegetation health) before/after
-  - PM2.5 (air quality) before/after
-  - Affected population within 10-minute walk
-  - Demographics (kids, adults, seniors)
-- Results stored in session
-- Chat displays impact summary
-
-### 6. Create a Proposal
-
-Type in the chat:
-```
-"propose this to the community with deadline October 25, 2025"
-```
-
-**What happens:**
-1. Backend validates you analyzed the park first
-2. Formats proposal data (markdown description)
-3. Returns `action: "submit_to_icp"`
-4. **Frontend automatically submits to ICP blockchain:**
-   - Environmental data
-   - Demographics
-   - Proposal description
-   - Deadline (in nanoseconds)
-5. ICP canister stores proposal immutably
-6. Returns proposal ID
-7. Chat displays: "✅ Proposal #1 created on ICP blockchain!"
-
-### 7. Verify Proposal on Blockchain
-
-```bash
-# Check total proposals
-dfx canister call parkpulse_backend getTotalProposals
-
-# Get proposal details
-dfx canister call parkpulse_backend getProposal '(1)'
-```
-
----
-
-## 🔍 Complete User Flow Example
-
-```
-User: "show parks in zipcode 20008"
-AI: ✅ Loaded 15 parks for zipcode: 20008
-    [Map shows 15 parks]
-
-User: [Clicks on "Rock Creek Park"]
-AI: Selected: Rock Creek Park. You can ask "what happens if removed?"
-
-User: "what happens if removed"
+You: "What happens if this park is removed?"
 AI: 🌳 ENVIRONMENTAL IMPACT ANALYSIS
 
-    Removing Rock Creek Park would:
-    • Vegetation loss: 66.7%
-    • PM2.5 increase: +140.95% (10.5 → 25.3 μg/m³)
-    • Affected residents: 23,000 people
-    • Demographics: 5,000 kids, 15,000 adults, 3,000 seniors
+    Removing Zilker Park would:
+    • Vegetation loss: 72.3%
+    • PM2.5 increase: +156% (8.5 → 21.8 μg/m³)
+    • Affected residents: 35,420 people
+    • Demographics: 7,200 children, 23,100 adults, 5,120 seniors
+```
 
-User: "propose this to the community"
-AI: ✅ Proposal ready for blockchain submission!
+### 3️⃣ Create Proposals (Government Employees Only)
+```
+You: "Create a proposal to protect this park"
+AI: ⚠️ Verifying government employee status...
+    ✅ Verified! Generating proposal...
 
-    [Frontend submits to ICP blockchain]
+    📋 Proposal ready for blockchain submission!
+    📧 Email notifications will be sent to all registered users
 
-    ✅ Proposal successfully submitted to ICP blockchain!
+    [Automatically submits to ICP blockchain]
 
-    📋 Proposal ID: #1
-    🏛️ Park: Rock Creek Park
-    📅 Deadline: October 25, 2025
-    🌐 Network: local
+    ✅ Proposal #42 created successfully!
+```
 
-    Your proposal is now active and ready for community voting!
+### 4️⃣ Vote on Proposals
+- Receive email notification when new proposal is created
+- Click "Review & Vote Now" in email
+- View proposal details and environmental impact
+- Cast your vote (Yes/No)
+- Results stored immutably on blockchain
+
+---
+
+## 🛠️ Technology Stack
+
+<table>
+<tr>
+<td>
+
+### Frontend
+- **Framework:** Next.js 15
+- **Language:** TypeScript
+- **Styling:** Tailwind CSS
+- **Maps:** Leaflet.js
+- **Auth:** Internet Identity
+- **Icons:** Lucide React
+- **Deployment:** Vercel
+
+</td>
+<td>
+
+### Backend
+- **Framework:** FastAPI
+- **Language:** Python 3.12
+- **AI:** Google Gemini 2.0
+- **GIS:** Google Earth Engine
+- **Email:** Gmail SMTP
+- **Database Client:** Supabase
+- **Deployment:** Fly.io
+
+</td>
+</tr>
+<tr>
+<td>
+
+### Database
+- **Platform:** Supabase
+- **Engine:** PostgreSQL 15
+- **Features:**
+  - Row Level Security
+  - Real-time subscriptions
+  - Auto-generated APIs
+
+</td>
+<td>
+
+### Blockchain
+- **Platform:** Internet Computer
+- **Language:** Motoko
+- **Features:**
+  - Immutable storage
+  - On-chain voting
+  - DAO governance
+
+</td>
+</tr>
+</table>
+
+---
+
+## 📁 Project Structure
+
+```
+ParkPulseIcp/
+├── api/                              # Backend (FastAPI)
+│   ├── main.py                       # API server & endpoints
+│   ├── agent.py                      # AI chat agent logic
+│   ├── database.py                   # Supabase queries
+│   ├── email_service.py              # Email notifications
+│   ├── utils.py                      # Earth Engine utilities
+│   ├── models.py                     # Pydantic models
+│   └── requirements.txt              # Python dependencies
+│
+├── src/
+│   ├── parkpulse_backend/            # ICP Smart Canister
+│   │   └── main.mo                   # Motoko smart contract
+│   │
+│   └── parkpulse_frontend/           # Frontend (Next.js)
+│       ├── app/
+│       │   ├── page.tsx              # Landing page
+│       │   ├── chat/page.tsx         # AI chat interface
+│       │   ├── options/page.tsx      # Main menu
+│       │   ├── proposal/page.tsx     # DAO proposals
+│       │   └── profile/page.tsx      # User profile
+│       ├── components/
+│       │   ├── MapView.tsx           # Interactive map
+│       │   ├── WalletStatus.tsx      # Auth status
+│       │   ├── ChatMessage.tsx       # Message display
+│       │   └── ChatInput.tsx         # User input
+│       └── lib/
+│           ├── api.ts                # Backend API client
+│           ├── icp.ts                # ICP integration
+│           └── auth.ts               # Internet Identity
+│
+├── ARCHITECTURE.md                   # System architecture
+├── HIGH_LEVEL_FLOW.md               # User journey flows
+└── README.md                         # This file
 ```
 
 ---
 
-## 🧪 Testing & Verification
+## 🔑 Core Features Breakdown
 
-### Test 1: Backend Health Check
+### AI Intent Classification
+The system uses Google Gemini to classify user intents:
 
+| Intent | Example Query | Action |
+|--------|---------------|--------|
+| `show_parks` | "Show parks in 90210" | Query database, render map |
+| `ask_area` | "How big is this park?" | Calculate area in requested units |
+| `park_ndvi_query` | "How green is this park?" | Calculate vegetation health (NDVI) |
+| `air_quality_query` | "What's the air quality?" | Get PM2.5 levels from Earth Engine |
+| `park_removal_impact` | "What if removed?" | Full environmental impact analysis |
+| `create_proposal` | "Create proposal" | Verify user, generate summary, submit to blockchain |
+
+### Government Employee Verification
+1. User logs in with Internet Identity
+2. Navigates to profile page
+3. Checks "I am a Government Employee"
+4. Enters PIN
+5. System verifies PIN before saving
+6. User can now create proposals
+
+### Email Notification System
+When a proposal is created:
+1. Backend retrieves all user emails from database
+2. Generates beautiful HTML email with:
+   - Park name and voting deadline
+   - Proposal description
+   - "Review & Vote Now" button
+3. Sends batch emails via Gmail SMTP
+4. Users receive notifications instantly
+5. Click-through takes them directly to proposal page
+
+---
+
+## 🌐 API Endpoints
+
+| Endpoint | Method | Description | Auth Required |
+|----------|--------|-------------|---------------|
+| `/api/agent` | POST | AI chat interaction | Optional |
+| `/api/analyze` | POST | Park removal impact analysis | No |
+| `/api/ndvi` | POST | NDVI calculation | No |
+| `/api/parks/{zipcode}` | GET | Get parks by zipcode | No |
+| `/api/user/profile` | POST | Save user profile | No |
+| `/api/user/profile/{principal}` | GET | Get user profile | No |
+| `/health` | GET | Health check | No |
+
+> 📖 **API Documentation:** Visit `/docs` endpoint for interactive Swagger UI
+
+---
+
+## 🧪 Testing
+
+### Backend Health Check
 ```bash
 curl http://localhost:4000/health
 # Expected: {"status":"ok"}
 ```
 
-### Test 2: Search Parks
-
+### Test AI Agent
 ```bash
 curl -X POST http://localhost:4000/api/agent \
   -H "Content-Type: application/json" \
@@ -335,8 +403,7 @@ curl -X POST http://localhost:4000/api/agent \
   }'
 ```
 
-### Test 3: Analyze Park
-
+### Test Park Analysis
 ```bash
 curl -X POST http://localhost:4000/api/agent \
   -H "Content-Type: application/json" \
@@ -347,301 +414,194 @@ curl -X POST http://localhost:4000/api/agent \
   }'
 ```
 
-### Test 4: Create Proposal
+---
 
+## 🚀 Deployment
+
+### Frontend (Vercel)
 ```bash
-curl -X POST http://localhost:4000/api/agent \
-  -H "Content-Type: application/json" \
-  -d '{
-    "message": "propose this to community",
-    "sessionId": "test123",
-    "uiContext": {"selectedParkId": "park_001"}
-  }'
+# Connected to GitHub repo
+# Auto-deploys on push to main branch
+# Live at: https://parkpulseai.vercel.app
 ```
 
-### Test 5: Verify on Blockchain
-
+### Backend (Fly.io)
 ```bash
-# Get total proposals
-dfx canister call parkpulse_backend getTotalProposals
-# Expected: (1 : nat64)
+# Deploy with fly.io CLI
+fly deploy
 
-# Get proposal details
-dfx canister call parkpulse_backend getProposal '(1)'
-# Expected: Full proposal data including environmental impact
+# Live at: https://parkpulse-be.fly.dev
+```
+
+### Database (Supabase)
+- Hosted PostgreSQL with automatic backups
+- Row Level Security enabled
+- Connection pooling configured
+
+### Blockchain (ICP Mainnet)
+```bash
+# Deploy to Internet Computer
+dfx deploy --network ic
 ```
 
 ---
 
-## 📊 Data Flow
+## 🔒 Security Features
 
-### Proposal Creation Flow
-
-```
-1. User Message → Frontend
-   "propose this to community"
-
-2. Frontend → Backend API
-   POST /api/agent
-   {message, sessionId, uiContext}
-
-3. Backend Processing
-   ├─ Gemini AI classifies intent: "create_proposal"
-   ├─ Retrieves removal analysis from session
-   ├─ Formats environmental data
-   ├─ Formats demographics data
-   └─ Returns: {action: "submit_to_icp", data: {...}}
-
-4. Frontend → ICP Canister
-   actor.createProposal(
-     parkName,
-     parkId,
-     description,
-     endDateNs,
-     environmentalData,
-     demographics,
-     creator
-   )
-
-5. ICP Canister Processing
-   ├─ Validates inputs
-   ├─ Increments proposal counter
-   ├─ Stores in HashMap (persistent)
-   ├─ Initializes voting hashmaps
-   └─ Returns: proposalId (bigint)
-
-6. Frontend Display
-   ✅ Proposal #1 created on ICP blockchain!
-```
+- ✅ **Decentralized Authentication** - Internet Identity (no passwords)
+- ✅ **Row Level Security** - Supabase RLS policies
+- ✅ **Government Verification** - PIN-based access control
+- ✅ **CORS Configuration** - Restricted origins
+- ✅ **Environment Variables** - Sensitive data protected
+- ✅ **HTTPS Only** - All production traffic encrypted
 
 ---
 
-## 🛠️ Troubleshooting
+## 📊 Database Schema
 
-### Issue: Backend won't start
-
-**Check:**
-```bash
-# Python version
-python3 --version  # Should be 3.12+
-
-# Dependencies installed
-pip3 list | grep -E "fastapi|asyncpg|google-genai"
-
-# Environment variables
-cat api/.env
+### Users Table
+```sql
+CREATE TABLE users (
+    id BIGSERIAL PRIMARY KEY,
+    principal_id TEXT UNIQUE NOT NULL,
+    name TEXT,
+    email TEXT,
+    address_line1 TEXT,
+    city TEXT,
+    state TEXT,
+    pincode TEXT,
+    is_government_employee BOOLEAN DEFAULT FALSE,
+    pin TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
 ```
 
-### Issue: Frontend can't connect to backend
-
-**Check:**
-```bash
-# Backend is running
-curl http://localhost:4000/health
-
-# CORS is enabled (already configured)
-# Check api/main.py line 66-72
-```
-
-### Issue: ICP canister not found
-
-**Check:**
-```bash
-# dfx is running
-dfx ping
-
-# Canister is deployed
-dfx canister id parkpulse_backend
-
-# Frontend .env.local has correct canister ID
-cat src/parkpulse_frontend/.env.local
-```
-
-### Issue: "Please analyze the park removal first"
-
-**Cause:** Proposal requires prior analysis
-
-**Solution:**
-1. Select a park
-2. Ask: "what happens if removed"
-3. Wait for analysis to complete
-4. Then ask: "propose this to community"
-
-### Issue: Earth Engine authentication error
-
-**Solution:**
-```bash
-# Authenticate
-earthengine authenticate
-
-# Set project in .env
-GEE_PROJECT_ID=your-project-id
-```
-
-### Issue: Database connection failed
-
-**Check:**
-```bash
-# PostgreSQL is running
-psql -h localhost -U postgres -d parksdb -c "SELECT 1"
-
-# Credentials in api/.env match your setup
-```
+See `api/supabase_users_table.sql` for complete schema with indexes and policies.
 
 ---
 
-## 📁 Project Structure
+## 🤝 Contributing
 
-```
-hello/
-├── api/                          # Backend (FastAPI)
-│   ├── main.py                   # Server entry point
-│   ├── agent.py                  # AI intent classification & handlers
-│   ├── database.py               # PostgreSQL queries
-│   ├── utils.py                  # Earth Engine computations
-│   ├── models.py                 # Pydantic data models
-│   ├── requirements.txt          # Python dependencies
-│   └── .env                      # Backend configuration
-│
-├── src/
-│   ├── parkpulse_backend/        # ICP Canister (Motoko)
-│   │   └── main.mo               # Proposal storage & voting
-│   │
-│   └── parkpulse_frontend/       # Frontend (Next.js)
-│       ├── app/
-│       │   ├── chat/page.tsx     # Chat interface
-│       │   ├── options/page.tsx  # Main menu
-│       │   └── layout.tsx        # App layout
-│       ├── components/
-│       │   ├── MapView.tsx       # Interactive map
-│       │   ├── ChatMessage.tsx   # Message display
-│       │   └── ChatInput.tsx     # User input
-│       ├── lib/
-│       │   ├── api.ts            # Backend API calls
-│       │   └── icp.ts            # ICP canister integration
-│       ├── types/index.ts        # TypeScript types
-│       └── .env.local            # Frontend configuration
-│
-├── dfx.json                      # ICP canister configuration
-├── package.json                  # Project metadata
-└── README.md                     # This file
-```
+We welcome contributions! Here's how you can help:
 
----
+### 🐛 Report Bugs
+Open an issue with:
+- Clear description
+- Steps to reproduce
+- Expected vs actual behavior
+- Screenshots if applicable
 
-## 🔑 Key Features
+### 💡 Suggest Features
+Open an issue tagged `enhancement` with:
+- Use case description
+- Proposed solution
+- Alternative approaches considered
 
-### 1. Natural Language Interface
-- Powered by **Gemini 2.0 Flash**
-- Understands queries like:
-  - "show parks in Austin"
-  - "how big is this park"
-  - "what happens if removed"
-  - "propose this to community"
-
-### 2. Environmental Analysis
-- **NDVI (Normalized Difference Vegetation Index)**
-  - Measures vegetation health
-  - Before/after comparison
-- **PM2.5 Air Quality**
-  - Particulate matter concentration
-  - Health impact assessment
-- **Population Impact**
-  - 10-minute walking distance
-  - Age demographics (kids, adults, seniors)
-
-### 3. Blockchain Governance
-- **Immutable Proposals** - Stored on ICP blockchain
-- **Transparent Voting** - On-chain vote tracking
-- **Decentralized** - No central authority
-
-### 4. Data Sources
-- **PostgreSQL** - Park geometries & metadata
-- **Google Earth Engine** - Satellite imagery & environmental data
-- **Gemini AI** - Natural language understanding
-
----
-
-## 🧩 Technologies Used
-
-### Frontend
-- **Next.js 14** - React framework
-- **TypeScript** - Type safety
-- **Mapbox GL** - Interactive maps
-- **Tailwind CSS** - Styling
-- **@dfinity/agent** - ICP integration
-
-### Backend
-- **FastAPI** - Python web framework
-- **asyncpg** - Async PostgreSQL client
-- **Google Gemini AI** - LLM for intent classification
-- **Google Earth Engine** - Geospatial analysis
-
-### Blockchain
-- **Internet Computer (ICP)** - Layer-1 blockchain
-- **Motoko** - Smart contract language
-- **dfx** - ICP development kit
-
-### Database
-- **PostgreSQL** - Relational database with PostGIS
+### 🔧 Submit Pull Requests
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ---
 
 ## 📝 Environment Variables Reference
 
-### Backend (`api/.env`)
+<details>
+<summary>Backend Configuration (api/.env)</summary>
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `PGHOST` | PostgreSQL host | `localhost` |
-| `PGPORT` | PostgreSQL port | `5432` |
-| `PGDATABASE` | Database name | `parksdb` |
-| `PGUSER` | Database user | `postgres` |
-| `PGPASSWORD` | Database password | `your_password` |
-| `GEMINI_API_KEY` | Gemini API key | `AIza...` |
-| `GEE_PROJECT_ID` | Google Earth Engine project | `ee-yourproject` |
-| `PORT` | Backend server port | `4000` |
+```env
+# Supabase
+SUPABASE_URL=https://xxx.supabase.co
+SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
-### Frontend (`src/parkpulse_frontend/.env.local`)
+# AI & Analytics
+GEMINI_API_KEY=AIzaSy...
+GEE_PROJECT_ID=ee-yourproject
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `NEXT_PUBLIC_ICP_CANISTER_ID` | ICP canister ID | `br5f7-7uaaa...` |
-| `NEXT_PUBLIC_ICP_HOST` | ICP replica URL | `http://127.0.0.1:4943` |
-| `NEXT_PUBLIC_ICP_NETWORK` | Network name | `local` |
-| `NEXT_PUBLIC_API_URL` | Backend API URL | `http://localhost:4000` |
+# Email (Gmail)
+SMTP_SERVER=smtp.gmail.com
+SMTP_PORT=587
+SENDER_EMAIL=your_email@gmail.com
+SENDER_PASSWORD=your_16_char_app_password
+APP_URL=https://parkpulseai.vercel.app
 
----
+# Server
+PORT=4000
+```
 
-## 🚦 Quick Start Checklist
+</details>
 
-- [ ] Install Node.js, Python, PostgreSQL, dfx
-- [ ] Get Gemini API key
-- [ ] Set up Google Earth Engine project
-- [ ] Configure PostgreSQL database with parks data
-- [ ] Install backend dependencies: `cd api && pip3 install -r requirements.txt`
-- [ ] Install frontend dependencies: `cd src/parkpulse_frontend && npm install`
-- [ ] Create `api/.env` with database credentials and API keys
-- [ ] Authenticate Earth Engine: `earthengine authenticate`
-- [ ] Start ICP: `dfx start --background`
-- [ ] Deploy canister: `dfx deploy parkpulse_backend`
-- [ ] Create `src/parkpulse_frontend/.env.local` with canister ID
-- [ ] Start backend: `cd api && python3 main.py`
-- [ ] Start frontend: `npm run dev --workspace=src/parkpulse_frontend` (from root directory)
-- [ ] Test: Open http://localhost:3000/chat
+<details>
+<summary>Frontend Configuration (src/parkpulse_frontend/.env.local)</summary>
+
+```env
+# Backend API
+NEXT_PUBLIC_API_URL=https://parkpulse-be.fly.dev
+
+# Internet Computer
+NEXT_PUBLIC_ICP_NETWORK=ic
+NEXT_PUBLIC_CANISTER_ID=br5f7-7uaaa-aaaaa-qaaca-cai
+```
+
+</details>
 
 ---
 
-## 📞 Support & Contributing
+## 🎓 Learn More
 
-For issues, questions, or contributions, please refer to the project repository.
-
----
-
-## 📄 License
-
-This project is part of ParkPulse.ai initiative for community-driven urban planning.
+- [Internet Computer Documentation](https://internetcomputer.org/docs)
+- [Next.js Documentation](https://nextjs.org/docs)
+- [FastAPI Documentation](https://fastapi.tiangolo.com/)
+- [Google Earth Engine Guide](https://developers.google.com/earth-engine)
+- [Supabase Documentation](https://supabase.com/docs)
 
 ---
 
-**Made with ❤️ for sustainable urban communities**
+## 📜 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+---
+
+## 🙏 Acknowledgments
+
+- **Internet Computer Foundation** - For blockchain infrastructure
+- **Google** - For Gemini AI and Earth Engine APIs
+- **Vercel** - For frontend hosting
+- **Supabase** - For database infrastructure
+- **Open Source Community** - For amazing tools and libraries
+
+---
+
+## 💬 Support
+
+- 📧 Email: support@parkpulse.ai
+- 💬 Discord: [Join our community](#)
+- 🐦 Twitter: [@ParkPulseAI](#)
+- 📚 Docs: [docs.parkpulse.ai](#)
+
+---
+
+## 🗺️ Roadmap
+
+- [ ] Mobile app (React Native)
+- [ ] Multi-language support
+- [ ] Advanced analytics dashboard
+- [ ] Integration with city planning databases
+- [ ] Real-time collaboration features
+- [ ] NFT rewards for active community members
+
+---
+
+<div align="center">
+
+### 🌟 Star us on GitHub — it motivates us a lot!
+
+**Made with 💚 for sustainable urban communities**
+
+[⬆ Back to Top](#-parkpulseai)
+
+</div>
