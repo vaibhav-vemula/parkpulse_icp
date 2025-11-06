@@ -4,7 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
+    "prebuild": "next build",
     "build": "next build",
+    "postbuild": "cp .ic-assets.json5 out/.ic-assets.json5 2>/dev/null || true",
     "start": "next start",
     "lint": "eslint"
   },

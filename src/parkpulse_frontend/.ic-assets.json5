@@ -1,0 +1,52 @@
+[
+    {
+        "match": "**/*",
+        "disable_security_policy_warning": true,
+        "headers": {
+            "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://api.mapbox.com; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://ic0.app https://*.ic0.app https://icp0.io https://*.icp0.io https://icp-api.io https://*.icp-api.io https://internetcomputer.org https://*.internetcomputer.org https://parkpulse-be.vercel.app https://api.mapbox.com https://events.mapbox.com https://*.tiles.mapbox.com wss://*.tiles.mapbox.com; worker-src 'self' blob:; child-src 'self' blob:; frame-src 'self' https://identity.ic0.app https://identity.icp0.io https://identity.internetcomputer.org; form-action 'self'; base-uri 'self'; manifest-src 'self'; media-src 'self' blob: data:;",
+            "X-Frame-Options": "SAMEORIGIN",
+            "X-Content-Type-Options": "nosniff",
+            "Referrer-Policy": "same-origin",
+            "Permissions-Policy": "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()"
+        },
+        "cache": {
+            "max_age": 3600
+        }
+    },
+    {
+        "match": "**/*.js",
+        "cache": {
+            "max_age": 31536000
+        }
+    },
+    {
+        "match": "**/*.css",
+        "cache": {
+            "max_age": 31536000
+        }
+    },
+    {
+        "match": "**/*.ico",
+        "cache": {
+            "max_age": 31536000
+        }
+    },
+    {
+        "match": "**/*.svg",
+        "cache": {
+            "max_age": 31536000
+        }
+    },
+    {
+        "match": "**/*.woff2",
+        "cache": {
+            "max_age": 31536000
+        }
+    },
+    {
+        "match": "index.html",
+        "cache": {
+            "max_age": 0
+        }
+    }
+]

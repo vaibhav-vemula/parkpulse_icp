@@ -20,7 +20,7 @@
         "parkpulse_backend"
       ],
       "source": [
-        "src/parkpulse_frontend/.next"
+        "src/parkpulse_frontend/out"
       ],
       "type": "assets"
     }
